@@ -6,7 +6,7 @@ name: auto_Reserve
 # or API.
 on:
   schedule:
-  - cron: '0 12 * * *'   # 每天北京时间 20:00 运行
+  - cron: '59 10 * * *'   # 每天北京时间 18:59 运行，留存gitaction余量
   workflow_dispatch:
   
 jobs:
@@ -30,6 +30,6 @@ jobs:
           USERNAMES: ${{ secrets.USERNAMES }}
           PASSWORDS: ${{ secrets.PASSWORDS }}
         run: |
-          python main.py -m debug --action
+          python main.py -m reserve --action
 
 
