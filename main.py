@@ -21,12 +21,12 @@ get_current_dayofweek = lambda action: (
     else time.strftime("%A", time.localtime(time.time()))
 )
 
+
 SLEEPTIME = 0.0          # 每次抢座间隔（已经是0）
 ENDTIME = "20:01:00"     # 截止时间
 ENABLE_SLIDER = True     # 有滑块验证
 MAX_ATTEMPT = 999        # 改大：在截止时间前不限次数重试
 RESERVE_NEXT_DAY = False
-
 
 def login_and_reserve(users, usernames, passwords, action, success_list=None):
     logging.info(
@@ -80,8 +80,13 @@ def main(users, action=False):
 
     target_hour = 19
     target_minute = 59
-    target_second = 56  # 提前到 56 秒，多留几秒预热
+
+target_second = 56
     target_wait = 0
+
+target_second = 56
+    target_wait=0
+target_second = 56
     logging.info(f"等待到 {target_hour:02d}:{target_minute:02d}:{target_second:02d} 再开始抢座...")
 
     # 提前登录预热
