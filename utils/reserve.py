@@ -23,12 +23,8 @@ class reserve:
         enable_slider=False,
         reserve_next_day=False,
     ):
-        self.login_page = (
-            "https://passport2.chaoxing.com/mlogin?loginType=1&newversion=true&fid="
-        )
-        self.url = (
-            "https://office.chaoxing.com/front/third/apps/seat/code?id={}&seatNum={}"
-        )
+        self.login_page = "https://passport2.chaoxing.com/mlogin?loginType=1&newversion=true&fid="
+        self.url = "https://office.chaoxing.com/front/third/apps/seat/code?id={}&seatNum={}"
         self.submit_url = "https://office.chaoxing.com/data/apps/seat/submit"
         self.seat_url = "https://office.chaoxing.com/data/apps/seat/getusedtimes"
         self.login_url = "https://passport2.chaoxing.com/fanyalogin"
@@ -62,23 +58,17 @@ class reserve:
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Host": "passport2.chaoxing.com",
         }
-
         self.sleep_time = sleep_time
         self.max_attempt = max_attempt
         self.enable_slider = enable_slider
         self.reserve_next_day = reserve_next_day
 
-    # 【通用token匹配：三层校验，零误判，所有用户通用】
     def _get_page_token(self, url, require_value=False):
         response = self.requests.get(url=url)
         html = response.content.decode("utf-8")
-        # 1. 正则匹配格式
         candidates = re.findall(r'([a-f0-9]{32}_\d{8,10})', html)
-        # 2. 过滤固定长度42位
         candidates = [t for t in candidates if len(t) == 42]
-        # 3. 去重取唯一值
         matches = list(set(candidates))
-
         value_matches = None
         if require_value:
             value_matches = re.findall(r'value="(.*?)"', html)
@@ -110,9 +100,7 @@ class reserve:
             logging.info(f"User {username} login successfully")
             return (True, "")
         else:
-            logging.info(
-                f"User {username} login failed. Please check you password and username! "
-            )
+            logging.info(f"User {username} login failed. Please check you password and username!")
             return (False, obj["msg2"])
 
     def roomid(self, encode):
@@ -123,14 +111,12 @@ class reserve:
             info = f'{i["firstLevelName"]}-{i["secondLevelName"]}-{i["thirdLevelName"]} id为：{i["id"]}'
             print(info)
 
-    # 【随机callback，和真人浏览器一致】
     def resolve_captcha(self):
         logging.info(f"Start to resolve captcha token")
         captcha_token, bg, tp = self.get_slide_captcha_data()
         logging.info(f"Successfully get prepared captcha_token {captcha_token}")
         x = self.x_distance(bg, tp) + random.randint(-2, 2)
         logging.info(f"Successfully calculate the captcha distance {x}")
-
         callback = f"jQuery{random.randint(100000000, 999999999)}_{int(time.time() * 1000)}"
         params = {
             "callback": callback,
@@ -156,12 +142,10 @@ class reserve:
             logging.info("Captcha validate failed, retry.")
             return ""
 
-    # 【随机callback，和真人浏览器一致】
     def get_slide_captcha_data(self):
         url = "https://captcha.chaoxing.com/captcha/get/verification/image"
         timestamp = int(time.time() * 1000)
         capture_key, token = generate_captcha_key(timestamp)
-        referer = f"https://office.chaoxing.com/front/third/apps/seat/code?id=3993&seatNum=0199"
         callback = f"jQuery{random.randint(100000000, 999999999)}_{timestamp}"
         params = {
             "callback": callback,
@@ -170,7 +154,7 @@ class reserve:
             "version": "1.1.18",
             "captchaKey": capture_key,
             "token": token,
-            "referer": referer,
+            "referer": self.url,
             "_": timestamp,
             "d": "a",
             "b": "a",
@@ -183,7 +167,6 @@ class reserve:
     def x_distance(self, bg, tp):
         import numpy as np
         import cv2
-
         def cut_slide(slide):
             slider_array = np.frombuffer(slide, np.uint8)
             slider_image = cv2.imdecode(slider_array, cv2.IMREAD_UNCHANGED)
@@ -192,7 +175,6 @@ class reserve:
             mask[mask != 0] = 255
             x, y, w, h = cv2.boundingRect(mask)
             return slider_part[y : y + h, x : x + w]
-
         c_captcha_headers = {
             "Referer": "https://office.chaoxing.com/",
             "Host": "captcha-b.chaoxing.com",
@@ -220,7 +202,7 @@ class reserve:
         return max_loc[0]
 
     def submit(self, times, roomid, seatid, action):
-        time.sleep(random.uniform(0.3, 1.2))
+        # 【优化】删掉了原版 time.sleep(random.uniform(0.3, 1.2))
         for seat in seatid:
             suc = False
             while ~suc and self.max_attempt > 0:
@@ -231,40 +213,27 @@ class reserve:
                 captcha = self.resolve_captcha() if self.enable_slider else ""
                 logging.info(f"Captcha token {captcha}")
                 suc = self.get_submit(
-                    self.submit_url,
-                    times=times,
-                    token=token,
-                    roomid=roomid,
-                    seatid=seat,
-                    captcha=captcha,
-                    action=action,
-                    value=value,
+                    self.submit_url, times=times, token=token, roomid=roomid,
+                    seatid=seat, captcha=captcha, action=action, value=value,
                 )
                 if suc:
                     return suc
-                time.sleep(random.uniform(0.5, 1.5))
+                # 【优化】重试等待从 0.5~1.5s 缩短到 0.05s
+                time.sleep(0.05)
                 self.max_attempt -= 1
         return suc
 
-    def get_submit(
-        self, url, times, token, roomid, seatid, captcha="", action=False, value=""
-    ):
+    def get_submit(self, url, times, token, roomid, seatid, captcha="", action=False, value=""):
         delta_day = 1 if self.reserve_next_day else 0
         day = datetime.date.today() + datetime.timedelta(days=0 + delta_day)
         if action:
             day = datetime.date.today() + datetime.timedelta(days=1 + delta_day)
         parm = {
-            "roomId": roomid,
-            "startTime": times[0],
-            "endTime": times[1],
-            "day": str(day),
-            "seatNum": seatid,
-            "captcha": captcha,
-            "token": token,
-            "type": "1",
-            "verifyData": "1",
+            "roomId": roomid, "startTime": times[0], "endTime": times[1],
+            "day": str(day), "seatNum": seatid, "captcha": captcha,
+            "token": token, "type": "1", "verifyData": "1",
         }
-        logging.info(f"submit parameter {parm} ")
+        logging.info(f"submit parameter {parm}")
         parm["enc"] = verify_param(parm, value)
         html = self.requests.post(url=url, params=parm).content.decode("utf-8")
         self.submit_msg.append(times[0] + "~" + times[1] + ":  " + str(json.loads(html)))
