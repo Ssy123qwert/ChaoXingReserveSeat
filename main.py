@@ -8,7 +8,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-
 from utils import reserve, get_user_credentials
 
 get_current_time = lambda action: (
@@ -22,13 +21,11 @@ get_current_dayofweek = lambda action: (
     else time.strftime("%A", time.localtime(time.time()))
 )
 
-
-SLEEPTIME = 0.0  # 每次抢座的间隔
-ENDTIME = "20:01:00"  # 根据学校的预约座位时间+1min即可
-
-ENABLE_SLIDER = True  # 是否有滑块验证
-MAX_ATTEMPT = 5  # 最大尝试次数
-RESERVE_NEXT_DAY = False  # 预约明天而不是今天的
+SLEEPTIME = 0.0          # 每次抢座间隔（已经是0）
+ENDTIME = "20:01:00"     # 截止时间
+ENABLE_SLIDER = True     # 有滑块验证
+MAX_ATTEMPT = 999        # 改大：在截止时间前不限次数重试
+RESERVE_NEXT_DAY = False
 
 
 def login_and_reserve(users, usernames, passwords, action, success_list=None):
@@ -83,32 +80,43 @@ def main(users, action=False):
 
     target_hour = 19
     target_minute = 59
-    target_second = 58
-    target_wait=0
+    target_second = 56  # 提前到 56 秒，多留几秒预热
+    target_wait = 0
     logging.info(f"等待到 {target_hour:02d}:{target_minute:02d}:{target_second:02d} 再开始抢座...")
 
-    while  True:
+    # 提前登录预热
+    prelogin_done = False
+    while True:
         now_ts = time.time() + (8 * 3600 if action else 0)
         now = time.localtime(now_ts)
+        if not prelogin_done and now.tm_sec >= 50:
+            # 提前登录，到点直接抢
+            prelogin_done = True
+            logging.info("提前登录预热...")
+            try:
+                s = reserve(sleep_time=0, max_attempt=1, enable_slider=True, reserve_next_day=False)
+                s.get_login_status()
+                s.login(usernames.split(",")[0] if action else users[0].get("username"),
+                        passwords.split(",")[0] if action else users[0].get("password"))
+                logging.info("预热登录成功！")
+            except Exception as e:
+                logging.info(f"预热登录失败（不影响抢座）: {e}")
         if (now.tm_hour == target_hour and
             now.tm_min == target_minute and
             now.tm_sec >= target_second):
             break
         time.sleep(0.5)
-        target_wait=target_wait+1
-        if(target_wait%10==0):
+        target_wait += 1
+        if target_wait % 10 == 0:
             logging.info("wait ")
 
     logging.info("时间到！开始抢座！")
 
     while current_time < ENDTIME:
         attempt_times += 1
-        # try:
         success_list = login_and_reserve(
             users, usernames, passwords, action, success_list
         )
-        # except Exception as e:
-        #     print(f"An error occurred: {e}")
         print(
             f"attempt time {attempt_times}, time now {current_time}, success list {success_list}"
         )
