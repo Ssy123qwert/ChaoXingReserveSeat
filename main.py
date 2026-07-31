@@ -17,6 +17,8 @@ ENDTIME = "20:01:00"
 ENABLE_SLIDER = True
 MAX_ATTEMPT = 999
 RESERVE_NEXT_DAY = False
+FIRE_OFFSET_MS = 4      # 抢座偏移量（毫秒），避免被识别为脚本
+FIRE_JITTER_MS = 2      # 随机抖动（毫秒），让行为更像真人
 
 def login_and_reserve(users, usernames, passwords, action, success_list=None):
     logging.info(f"Global settings: SLEEPTIME={SLEEPTIME} ENDTIME={ENDTIME}")
@@ -87,6 +89,8 @@ def main(users, action=False):
     while time.time() + offset < target:
         pass
 
+    # 抢座偏移：等 FIRE_OFFSET_MS 毫秒 + 随机抖动，避免太快被封号
+    time.sleep((FIRE_OFFSET_MS + __import__("random").uniform(0, FIRE_JITTER_MS)) / 1000.0)
     logging.info("开抢！")
 
     def go():
