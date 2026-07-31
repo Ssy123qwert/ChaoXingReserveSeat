@@ -17,8 +17,8 @@ ENDTIME = "20:01:00"
 ENABLE_SLIDER = True
 MAX_ATTEMPT = 999
 RESERVE_NEXT_DAY = False
-FIRE_OFFSET_MS = 4      # 抢座偏移量（毫秒），避免被识别为脚本
-FIRE_JITTER_MS = 2      # 随机抖动（毫秒），让行为更像真人
+FIRE_OFFSET_MS = 2.5      # 抢座偏移量（毫秒），避免被识别为脚本
+FIRE_JITTER_MS = 0      # 随机抖动（毫秒），让行为更像真人
 
 def login_and_reserve(users, usernames, passwords, action, success_list=None):
     logging.info(f"Global settings: SLEEPTIME={SLEEPTIME} ENDTIME={ENDTIME}")
